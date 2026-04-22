@@ -1,3 +1,9 @@
 spring:
   application:
     name: api
+  datasource:
+    password: ${DB_PASSWORD}
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 86400000
