@@ -1,7 +1,7 @@
-package com.forma.api.utils;
+package com.forma.api.utils.exceptions;
 
 public class BadCredentialsException extends RuntimeException {
     public BadCredentialsException(String message) {
-        super("Bad credentials: " + message);
+        super(message);
     }
 }
