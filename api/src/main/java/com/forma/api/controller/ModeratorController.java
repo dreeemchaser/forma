@@ -12,8 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ModeratorController {
 
     @GetMapping
-    public ResponseEntity<?> getModerationQueue(@AuthenticationPrincipal UserDetails userDetails) throws
-            Exception {
+    public ResponseEntity<?> getModerationQueue(@AuthenticationPrincipal UserDetails userDetails) throws Exception {
         return null;
     }
 
