@@ -1,0 +1,62 @@
+@startuml Forma Entity Relationships
+
+skinparam linetype ortho
+
+enum Role {
+    REGULAR_USER
+    MODERATOR
+}
+
+entity User {
+    * id : UUID <<PK>>
+    --
+    * username : String <<unique>>
+    * passwordHash : String
+    * role : Role
+    * creationDate : Instant
+}
+
+entity Post {
+    * id : UUID <<PK>>
+    --
+    * user_id : UUID <<FK>>
+    * title : String
+    * body : String
+    aiFlagged : boolean
+    aiScore : double
+    flaggedMisleading : boolean
+    updatedAt : Instant
+}
+
+entity PostLike {
+    * id : UUID <<PK>>
+    --
+    * post_id : UUID <<FK>>
+    * user_id : UUID <<FK>>
+    * createdAt : Instant
+}
+
+entity Comment {
+    * id : UUID <<PK>>
+    --
+    * post_id : UUID <<FK>>
+    * user_id : UUID <<FK>>
+    * body : String
+    * createdAt : Instant
+}
+
+User ||--o{ Post : "authors"
+User ||--o{ PostLike : "likes"
+User ||--o{ Comment : "writes"
+Post ||--o{ PostLike : "receives"
+Post ||--o{ Comment : "receives"
+User }o--|| Role : "has"
+
+note bottom of PostLike
+    Unique constraint on
+    (post_id, user_id).
+    User cannot like own post
+    (enforced in service layer).
+end note
+
+@enduml
