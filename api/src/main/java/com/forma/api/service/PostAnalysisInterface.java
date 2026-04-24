@@ -1,9 +1,8 @@
 package com.forma.api.service;
 
-import com.forma.api.model.Post;
-import org.springframework.stereotype.Service;
+import com.forma.api.dto.CreatePostRequest;
+import com.forma.api.dto.PostAnalysisResponse;
 
-@Service
-public interface ModeratorService {
-    void analysePost(Post post);
+public interface PostAnalysisInterface {
+    PostAnalysisResponse analysePost(CreatePostRequest request);
 }
