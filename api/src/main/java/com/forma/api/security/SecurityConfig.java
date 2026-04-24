@@ -31,6 +31,7 @@ public class SecurityConfig {
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
                         // Moderator only:
                         .requestMatchers("/api/posts/*/flag").hasRole("MODERATOR")
+                        .requestMatchers("/api/moderator/**").hasRole("MODERATOR")
                         // Other routes require a logged-in user
                         .anyRequest()
                         .authenticated()
