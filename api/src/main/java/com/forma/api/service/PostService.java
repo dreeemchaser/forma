@@ -1,9 +1,6 @@
 package com.forma.api.service;
 
-import com.forma.api.dto.CommentResponse;
-import com.forma.api.dto.CreateCommentRequest;
-import com.forma.api.dto.CreatePostRequest;
-import com.forma.api.dto.PostResponse;
+import com.forma.api.dto.*;
 import com.forma.api.model.Comment;
 import com.forma.api.model.Post;
 import com.forma.api.model.PostLike;
@@ -27,22 +24,37 @@ public class PostService {
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
     private final CommentRepository commentRepository;
-    private final ModeratorService moderatorService;
+    private final PostAnalysisInterface moderatorService;
 
     @Transactional
     public PostResponse createPost(CreatePostRequest request, User author) {
-        Post post = postRepository.save(Post.builder()
+
+        // Analyze the content - request
+        PostAnalysisResponse postAnalysisResponse =  moderatorService.analysePost(request);
+        boolean aiFlagged = postAnalysisResponse.score() > 0.6;
+
+        Post post = postRepository.save(
+                Post.builder()
+                .postAuthor(author)
                 .title(request.title())
                 .body(request.body())
-                .postAuthor(author)
+                .aiFlagged(aiFlagged)
+                .aiScore(postAnalysisResponse.score())
+                .aiReasoning(postAnalysisResponse.reasoning())
                 .build());
 
-        moderatorService.analysePost(post);
         return mapToResponse(post);
     }
 
     public List<PostResponse> getAllPosts() {
         return postRepository.findAllByOrderByUpdatedAtDesc()
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    public List<PostResponse> getAllFlaggedPosts() {
+        return postRepository.findByAiFlaggedTrue()
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
@@ -121,8 +133,10 @@ public class PostService {
                 .authorUsername(post.getPostAuthor().getUsername())
                 .likeCount(likeCount)
                 .aiFlagged(post.isAiFlagged())
+                .aiReasoning(post.getAiReasoning())
                 .flaggedMisleading(post.isFlaggedMisleading())
                 .updatedAt(post.getUpdatedAt())
                 .build();
     }
+
 }
