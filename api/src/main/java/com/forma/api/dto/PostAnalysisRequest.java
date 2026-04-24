@@ -1,4 +1,6 @@
 package com.forma.api.dto;
 
-public class PostAnalysisRequest {
-}
+public record PostAnalysisRequest(
+        String title,
+        String body
+) {}

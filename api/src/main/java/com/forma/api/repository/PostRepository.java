@@ -8,5 +8,5 @@ import java.util.UUID;
 
 public interface PostRepository extends JpaRepository<Post, UUID> {
     List<Post> findAllByOrderByUpdatedAtDesc();
-    List<Post> findByFlaggedMisleadingTrue();
+    List<Post> findByAiFlaggedTrue();
 }

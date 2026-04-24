@@ -14,5 +14,5 @@ public record PostResponse(
         long likeCount,
         boolean aiFlagged,
         boolean flaggedMisleading,
-        Instant updatedAt
-) {}
+        Instant updatedAt,
+        String aiReasoning) {}

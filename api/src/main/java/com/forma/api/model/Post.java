@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
@@ -36,6 +35,7 @@ public class Post {
     // AI Fields:
     private boolean aiFlagged = false;
     private double aiScore;
+    private String aiReasoning;
 
     // Moderation Fields:
     private boolean flaggedMisleading = false;

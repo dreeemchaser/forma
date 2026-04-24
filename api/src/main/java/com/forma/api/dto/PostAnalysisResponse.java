@@ -1,4 +1,6 @@
 package com.forma.api.dto;
 
-public class PostAnalysisResponse {
-}
+public record PostAnalysisResponse(
+        double score,
+        String reasoning
+) {}
