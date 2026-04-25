@@ -13,12 +13,18 @@ spring:
 
 ai:
   provider: claude
-  api-key: ${ANTHROPIC_API_KEY}
+  api-key: ${AI_API_KEY}
 
 jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000
 
 springdoc:
+  api-docs:
+    path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+    enabled: true
+  swagger-ui.use-root-path: true
+  show-actuator: false
+  ignored-parameter-types: com.forma.api.model.User

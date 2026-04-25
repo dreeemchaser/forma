@@ -33,8 +33,8 @@ public class PostController {
     @Operation(summary = "Get all posts", description = "Returns all posts ordered by most recently updated")
     @ApiResponse(responseCode = "200", description = "Posts retrieved successfully")
     @GetMapping
-    public ResponseEntity<List<PostResponse>> getAllPosts() {
-        return ResponseEntity.ok(postService.getAllPosts());
+    public ResponseEntity<List<PostResponse>> getAllPosts(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(postService.getAllPosts(user));
     }
 
     // GET /api/posts/{id}
@@ -44,8 +44,8 @@ public class PostController {
             @ApiResponse(responseCode = "404", description = "Post not found")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<PostResponse> getPostById(@PathVariable UUID id) {
-        return ResponseEntity.ok(postService.getPostById(id));
+    public ResponseEntity<PostResponse> getPostById(@PathVariable UUID id, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(postService.getPostById(id, user));
     }
 
     // POST /api/posts
@@ -59,6 +59,17 @@ public class PostController {
     public ResponseEntity<PostResponse> createPost(@Valid @RequestBody CreatePostRequest request,
                                                    @AuthenticationPrincipal User user) {
         return ResponseEntity.status(HttpStatus.CREATED).body(postService.createPost(request, user));
+    }
+
+    // GET /api/posts/{id}/comments
+    @Operation(summary = "Get comments for a post")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Comments retrieved successfully"),
+            @ApiResponse(responseCode = "404", description = "Post not found")
+    })
+    @GetMapping("/{id}/comments")
+    public ResponseEntity<List<CommentResponse>> getComments(@PathVariable UUID id) {
+        return ResponseEntity.ok(postService.getComments(id));
     }
 
     // POST /api/posts/{id}/comments

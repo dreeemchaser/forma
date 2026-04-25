@@ -12,7 +12,9 @@ public record PostResponse(
         String body,
         String authorUsername,
         long likeCount,
+        boolean liked,
         boolean aiFlagged,
+        double aiScore,
         boolean flaggedMisleading,
         Instant updatedAt,
         String aiReasoning) {}

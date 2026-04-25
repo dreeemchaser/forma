@@ -152,7 +152,7 @@ class PostServiceTest {
         when(postRepository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of(post));
         when(postLikeRepository.countByPostId(postId)).thenReturn(5L);
 
-        List<PostResponse> result = postService.getAllPosts();
+        List<PostResponse> result = postService.getAllPosts(otherUser);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).title()).isEqualTo("Test Title");
@@ -163,7 +163,7 @@ class PostServiceTest {
     void getAllPosts_emptyList_returnsEmpty() {
         when(postRepository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of());
 
-        List<PostResponse> result = postService.getAllPosts();
+        List<PostResponse> result = postService.getAllPosts(otherUser);
 
         assertThat(result).isEmpty();
     }
@@ -175,7 +175,7 @@ class PostServiceTest {
         when(postRepository.findById(postId)).thenReturn(Optional.of(post));
         when(postLikeRepository.countByPostId(postId)).thenReturn(0L);
 
-        PostResponse result = postService.getPostById(postId);
+        PostResponse result = postService.getPostById(postId, otherUser);
 
         assertThat(result.id()).isEqualTo(postId);
         assertThat(result.title()).isEqualTo("Test Title");
@@ -185,7 +185,7 @@ class PostServiceTest {
     void getPostById_notFound_throwsException() {
         when(postRepository.findById(postId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postService.getPostById(postId))
+        assertThatThrownBy(() -> postService.getPostById(postId, otherUser))
                 .isInstanceOf(PostNotFoundException.class);
     }
 
@@ -358,7 +358,7 @@ class PostServiceTest {
         when(postRepository.findById(postId)).thenReturn(Optional.of(post));
         when(postLikeRepository.countByPostId(postId)).thenReturn(0L);
 
-        PostResponse response = postService.getPostById(postId);
+        PostResponse response = postService.getPostById(postId, otherUser);
 
         assertThat(response.aiReasoning()).isEqualTo("Clean post");
     }
@@ -368,7 +368,7 @@ class PostServiceTest {
         when(postRepository.findById(postId)).thenReturn(Optional.of(post));
         when(postLikeRepository.countByPostId(postId)).thenReturn(42L);
 
-        PostResponse response = postService.getPostById(postId);
+        PostResponse response = postService.getPostById(postId, otherUser);
 
         assertThat(response.likeCount()).isEqualTo(42L);
     }

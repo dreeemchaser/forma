@@ -43,27 +43,27 @@ public class PostService {
                 .aiReasoning(postAnalysisResponse.reasoning())
                 .build());
 
-        return mapToResponse(post);
+        return mapToResponse(post, author);
     }
 
-    public List<PostResponse> getAllPosts() {
+    public List<PostResponse> getAllPosts(User currentUser) {
         return postRepository.findAllByOrderByUpdatedAtDesc()
                 .stream()
-                .map(this::mapToResponse)
+                .map(post -> mapToResponse(post, currentUser))
                 .toList();
     }
 
     public List<PostResponse> getAllFlaggedPosts() {
         return postRepository.findByAiFlaggedTrue()
                 .stream()
-                .map(this::mapToResponse)
+                .map(post -> mapToResponse(post, null))
                 .toList();
     }
 
-    public PostResponse getPostById(UUID id) {
+    public PostResponse getPostById(UUID id, User currentUser) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new PostNotFoundException(id.toString()));
-        return mapToResponse(post);
+        return mapToResponse(post, currentUser);
     }
 
     @Transactional
@@ -105,6 +105,16 @@ public class PostService {
         postRepository.save(post);
     }
 
+    public List<CommentResponse> getComments(UUID postId) {
+        if (!postRepository.existsById(postId)) {
+            throw new PostNotFoundException(postId.toString());
+        }
+        return commentRepository.findByPostId(postId)
+                .stream()
+                .map(c -> new CommentResponse(c.getId(), c.getAuthor().getUsername(), c.getBody(), c.getCreatedAt()))
+                .toList();
+    }
+
     @Transactional
     public CommentResponse addComment(UUID postId, CreateCommentRequest request, User user) {
         Post post = postRepository.findById(postId)
@@ -124,15 +134,18 @@ public class PostService {
         );
     }
 
-    private PostResponse mapToResponse(Post post) {
+    private PostResponse mapToResponse(Post post, User currentUser) {
         long likeCount = postLikeRepository.countByPostId(post.getId());
+        boolean liked = currentUser != null && postLikeRepository.existsByPostIdAndUserId(post.getId(), currentUser.getId());
         return PostResponse.builder()
                 .id(post.getId())
                 .title(post.getTitle())
                 .body(post.getBody())
                 .authorUsername(post.getPostAuthor().getUsername())
                 .likeCount(likeCount)
+                .liked(liked)
                 .aiFlagged(post.isAiFlagged())
+                .aiScore(post.getAiScore())
                 .aiReasoning(post.getAiReasoning())
                 .flaggedMisleading(post.isFlaggedMisleading())
                 .updatedAt(post.getUpdatedAt())

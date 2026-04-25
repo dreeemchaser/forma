@@ -74,7 +74,7 @@ class PostControllerTest {
 
     @Test
     void getAllPosts_returns200WithList() throws Exception {
-        when(postService.getAllPosts()).thenReturn(List.of(mockPostResponse));
+        when(postService.getAllPosts(any())).thenReturn(List.of(mockPostResponse));
 
         mockMvc.perform(get("/api/posts"))
                 .andExpect(status().isOk())
@@ -84,7 +84,7 @@ class PostControllerTest {
 
     @Test
     void getAllPosts_emptyList_returns200() throws Exception {
-        when(postService.getAllPosts()).thenReturn(List.of());
+        when(postService.getAllPosts(any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/posts"))
                 .andExpect(status().isOk())
@@ -95,7 +95,7 @@ class PostControllerTest {
 
     @Test
     void getPostById_found_returns200() throws Exception {
-        when(postService.getPostById(postId)).thenReturn(mockPostResponse);
+        when(postService.getPostById(eq(postId), any())).thenReturn(mockPostResponse);
 
         mockMvc.perform(get("/api/posts/{id}", postId))
                 .andExpect(status().isOk())
@@ -104,7 +104,7 @@ class PostControllerTest {
 
     @Test
     void getPostById_notFound_returns404() throws Exception {
-        when(postService.getPostById(postId)).thenThrow(new PostNotFoundException(postId.toString()));
+        when(postService.getPostById(eq(postId), any())).thenThrow(new PostNotFoundException(postId.toString()));
 
         mockMvc.perform(get("/api/posts/{id}", postId))
                 .andExpect(status().isNotFound());

@@ -35,10 +35,11 @@ public class Post {
     // AI Fields:
     private boolean aiFlagged = false;
     private double aiScore;
+    @Column(columnDefinition = "TEXT")
     private String aiReasoning;
 
     // Moderation Fields:
-    private boolean flaggedMisleading = false;
+     private boolean flaggedMisleading = false;
     @UpdateTimestamp
     private Instant updatedAt;
 
