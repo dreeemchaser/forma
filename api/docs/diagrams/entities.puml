@@ -1,6 +1,23 @@
 @startuml Forma Entity Relationships
 
 skinparam linetype ortho
+skinparam entity {
+    BackgroundColor #f5f6fa
+    BorderColor #27187E
+    FontColor #111827
+    FontSize 13
+}
+skinparam enum {
+    BackgroundColor #EEF0FF
+    BorderColor #758BFD
+    FontColor #27187E
+}
+skinparam note {
+    BackgroundColor #f0f4e8
+    BorderColor #7A9A35
+    FontColor #374151
+}
+skinparam ArrowColor #27187E
 
 enum Role {
     REGULAR_USER
@@ -12,7 +29,7 @@ entity User {
     --
     * username : String <<unique>>
     * passwordHash : String
-    * role : Role
+    * role : Role <<FK>>
     * creationDate : Instant
 }
 
@@ -20,11 +37,13 @@ entity Post {
     * id : UUID <<PK>>
     --
     * user_id : UUID <<FK>>
-    * title : String
-    * body : String
-    aiFlagged : boolean
+    * title : String(255)
+    * body : String(255)
+    --
+    aiFlagged : boolean = false
     aiScore : double
-    flaggedMisleading : boolean
+    aiReasoning : TEXT
+    flaggedMisleading : boolean = false
     updatedAt : Instant
 }
 
@@ -41,22 +60,29 @@ entity Comment {
     --
     * post_id : UUID <<FK>>
     * user_id : UUID <<FK>>
-    * body : String
+    * body : String(500)
     * createdAt : Instant
 }
 
-User ||--o{ Post : "authors"
-User ||--o{ PostLike : "likes"
-User ||--o{ Comment : "writes"
-Post ||--o{ PostLike : "receives"
-Post ||--o{ Comment : "receives"
-User }o--|| Role : "has"
+User ||--o{ Post         : "authors"
+User ||--o{ PostLike     : "likes"
+User ||--o{ Comment      : "writes"
+Post ||--o{ PostLike     : "receives"
+Post ||--o{ Comment      : "receives"
+User }o--|| Role         : "has"
+
+note right of Post
+    AI fields populated on every
+    POST /api/posts by Claude.
+    aiScore > 0.6 → aiFlagged = true.
+    aiReasoning stored as TEXT
+    (no length limit).
+end note
 
 note bottom of PostLike
-    Unique constraint on
-    (post_id, user_id).
-    User cannot like own post
-    (enforced in service layer).
+    Unique constraint: (post_id, user_id).
+    Self-likes rejected in service layer
+    (user cannot like own post).
 end note
 
 @enduml

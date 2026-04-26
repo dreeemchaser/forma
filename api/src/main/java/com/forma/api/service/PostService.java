@@ -102,6 +102,7 @@ public class PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException(postId.toString()));
         post.setFlaggedMisleading(false);
+        post.setAiFlagged(false);
         postRepository.save(post);
     }
 

@@ -1,6 +1,10 @@
-# Forma API — Object Flow Diagram
+# Forma API — Object Flow Diagrams
 
-## Auth Flow
+---
+
+## 1. Auth Flow
+
+### Register
 
 ```
 Client
@@ -8,35 +12,65 @@ Client
   │  POST /api/auth/register  { username, password }
   │  ──────────────────────────────────────────────▶  AuthController
   │                                                        │
-  │                                                        │  AuthRequest(username, password)
+  │                                                        │  @Valid AuthRequest
+  │                                                        │  → MethodArgumentNotValidException (400) if invalid
   │                                                        ▼
   │                                                   AuthService
   │                                                        │
-  │                                                        │  User(username, passwordHash, role)
-  │                                                        ▼
-  │                                                  UserRepository ──▶ DB
+  │                                                        │  UserRepository.existsByUsername()
+  │                                                        │  → UsernameAlreadyExistsException (409) if taken
   │                                                        │
-  │                                                        │  JwtService.generateToken(UserDetails)
+  │                                                        │  PasswordEncoder.encode(password)
+  │                                                        │  User(username, passwordHash, role=REGULAR_USER)
+  │                                                        │  UserRepository.save(user)  ──▶ DB
+  │                                                        │
+  │                                                        │  JwtService.generateToken(user)
   │                                                        ▼
-  │  ◀──────────────────────────────────────────  AuthResponse(token)
+  │  ◀──────────────────────────────────────────  201  AuthResponse { token }
+```
+
+### Login
+
+```
+Client
   │
   │  POST /api/auth/login  { username, password }
   │  ──────────────────────────────────────────────▶  AuthController
   │                                                        │
-  │                                                        │  AuthRequest(username, password)
   │                                                        ▼
   │                                                   AuthService
   │                                                        │
   │                                                        │  UserRepository.findByUsername()
-  │                                                        │  PasswordEncoder.matches()
-  │                                                        │  JwtService.generateToken()
+  │                                                        │  → BadCredentialsException (401) if not found
+  │                                                        │
+  │                                                        │  PasswordEncoder.matches(password, hash)
+  │                                                        │  → BadCredentialsException (401) if mismatch
+  │                                                        │
+  │                                                        │  JwtService.generateToken(user)
   │                                                        ▼
-  │  ◀──────────────────────────────────────────  AuthResponse(token)
+  │  ◀──────────────────────────────────────────  200  AuthResponse { token }
+```
+
+### Get current user
+
+```
+Client
+  │
+  │  GET /api/auth/me
+  │  Authorization: Bearer <token>
+  │  ──────────────────────────────────────────────▶  JwtAuthFilter  (see section 2)
+  │                                                        │
+  │                                                        ▼
+  │                                                   AuthController
+  │                                                        │
+  │                                                        │  @AuthenticationPrincipal User
+  │                                                        ▼
+  │  ◀──────────────────────────────────────────  200  UserResponse { id, username, role }
 ```
 
 ---
 
-## Request Authentication (every protected route)
+## 2. JWT Authentication Filter (all protected routes)
 
 ```
 Client
@@ -44,99 +78,192 @@ Client
   │  Authorization: Bearer <token>
   │  ──────────────────────────────▶  JwtAuthFilter
   │                                        │
+  │                                        │  Extract token from Authorization header
   │                                        │  JwtService.extractUsername(token)
-  │                                        │  UserDetailsService.loadUserByUsername()
-  │                                        │  JwtService.isTokenValid()
+  │                                        │  → 401 if token malformed or expired
   │                                        │
-  │                                        │  sets SecurityContextHolder
+  │                                        │  UserDetailsService.loadUserByUsername()
+  │                                        │  → 401 if user no longer exists
+  │                                        │
+  │                                        │  JwtService.isTokenValid(token, userDetails)
+  │                                        │  → 401 if invalid
+  │                                        │
+  │                                        │  SecurityContextHolder.setAuthentication(...)
+  │                                        │  (authorities: ["ROLE_REGULAR_USER"] or ["ROLE_MODERATOR"])
   │                                        ▼
-  │                                   Controller (@AuthenticationPrincipal UserDetails)
+  │                                   Controller
+  │                                   (@AuthenticationPrincipal User injected automatically)
 ```
 
 ---
 
-## Post Flow
+## 3. Post Flow
+
+### Create post (with AI moderation)
 
 ```
 Client
   │
   │  POST /api/posts  { title, body }
+  │  Authorization: Bearer <token>
   │  ─────────────────────────────────▶  PostController
   │                                           │
-  │                                           │  CreatePostRequest(title, body)
-  │                                           │  UserDetails (from SecurityContext)
-  │                                           ▼
-  │                                       PostService
+  │                                           │  @Valid CreatePostRequest
+  │                                           │  → 400 if title or body blank / too long
   │                                           │
-  │                                           │  UserRepository.findByUsername()  ──▶ User
-  │                                           │  Post(title, body, author)
-  │                                           │  PostRepository.save(post)        ──▶ DB
+  │                                           │  @AuthenticationPrincipal User (author)
   │                                           ▼
-  │  ◀──────────────────────────────  PostResponse(id, title, body, authorUsername, ...)
+  │                                       PostService.createPost()
+  │                                           │
+  │                                           │  ClaudeAIService.analysePost(title, body)
+  │                                           │  ─────────────────────────────────────────▶  Anthropic API
+  │                                           │  ◀─────────────────────────────────────────
+  │                                           │  PostAnalysisResponse { score, reasoning }
+  │                                           │
+  │                                           │  aiFlagged = (score > 0.6)
+  │                                           │
+  │                                           │  Post { title, body, author,
+  │                                           │         aiFlagged, aiScore, aiReasoning }
+  │                                           │  PostRepository.save(post)  ──▶ DB
+  │                                           ▼
+  │  ◀──────────────────────────────  201  PostResponse { id, title, body, authorUsername,
+  │                                                        likeCount, liked, aiFlagged,
+  │                                                        aiScore, aiReasoning,
+  │                                                        flaggedMisleading, updatedAt }
+```
+
+### Get all posts
+
+```
+Client
   │
   │  GET /api/posts
   │  ─────────────────────────────────▶  PostController
   │                                           │
+  │                                           │  @AuthenticationPrincipal User (nullable)
   │                                           ▼
-  │                                       PostService
+  │                                       PostService.getAllPosts(currentUser)
   │                                           │
   │                                           │  PostRepository.findAllByOrderByUpdatedAtDesc()
-  │                                           │  PostLikeRepository.countByPostId()
+  │                                           │  For each post:
+  │                                           │    PostLikeRepository.countByPostId()
+  │                                           │    PostLikeRepository.existsByPostIdAndUserId()
+  │                                           │    (liked = false if currentUser is null)
   │                                           ▼
-  │  ◀──────────────────────────────  List<PostResponse>
+  │  ◀──────────────────────────────  200  List<PostResponse>
+```
+
+### Get post by ID
+
+```
+Client
+  │
+  │  GET /api/posts/{id}
+  │  ─────────────────────────────────▶  PostController
+  │                                           │
+  │                                           ▼
+  │                                       PostService.getPostById(id, currentUser)
+  │                                           │
+  │                                           │  PostRepository.findById(id)
+  │                                           │  → PostNotFoundException (404) if missing
+  │                                           ▼
+  │  ◀──────────────────────────────  200  PostResponse
 ```
 
 ---
 
-## Comment Flow
+## 4. Comment Flow
+
+### Get comments
+
+```
+Client
+  │
+  │  GET /api/posts/{id}/comments
+  │  ────────────────────────────────────────▶  PostController
+  │                                                  │
+  │                                                  ▼
+  │                                             PostService.getComments(postId)
+  │                                                  │
+  │                                                  │  PostRepository.existsById(postId)
+  │                                                  │  → PostNotFoundException (404) if missing
+  │                                                  │
+  │                                                  │  CommentRepository.findByPostId(postId)
+  │                                                  ▼
+  │  ◀──────────────────────────────────  200  List<CommentResponse>
+  │                                            (ordered by createdAt ascending)
+```
+
+### Add comment
 
 ```
 Client
   │
   │  POST /api/posts/{id}/comments  { body }
+  │  Authorization: Bearer <token>
   │  ────────────────────────────────────────▶  PostController
   │                                                  │
-  │                                                  │  CreateCommentRequest(body)
-  │                                                  │  postId (path variable)
-  │                                                  │  UserDetails (from SecurityContext)
-  │                                                  ▼
-  │                                             PostService
+  │                                                  │  @Valid CreateCommentRequest
+  │                                                  │  → 400 if body blank or > 500 chars
   │                                                  │
-  │                                                  │  PostRepository.findById(postId)   ──▶ Post
-  │                                                  │  UserRepository.findByUsername()   ──▶ User
-  │                                                  │  Comment(post, author, body)
-  │                                                  │  CommentRepository.save(comment)   ──▶ DB
   │                                                  ▼
-  │  ◀──────────────────────────────────  CommentResponse(id, authorUsername, body, createdAt)
+  │                                             PostService.addComment(postId, request, user)
+  │                                                  │
+  │                                                  │  PostRepository.findById(postId)
+  │                                                  │  → PostNotFoundException (404) if missing
+  │                                                  │
+  │                                                  │  Comment { post, author, body }
+  │                                                  │  CommentRepository.save(comment)  ──▶ DB
+  │                                                  ▼
+  │  ◀──────────────────────────────────  201  CommentResponse { id, authorUsername, body, createdAt }
 ```
 
 ---
 
-## Like Flow
+## 5. Like Flow
+
+### Like a post
 
 ```
 Client
   │
   │  POST /api/posts/{id}/like
+  │  Authorization: Bearer <token>
   │  ──────────────────────────▶  PostController
   │                                    │
-  │                                    │  postId, UserDetails
   │                                    ▼
-  │                               PostService
+  │                               PostService.likePost(postId, user)
   │                                    │
-  │                                    │  PostLikeRepository.existsByPostIdAndUserId()  ──▶ check duplicate
-  │                                    │  PostLike(post, user)
-  │                                    │  PostLikeRepository.save(postLike)             ──▶ DB
+  │                                    │  PostRepository.findById(postId)
+  │                                    │  → PostNotFoundException (404) if missing
+  │                                    │
+  │                                    │  post.authorId == user.id?
+  │                                    │  → ConflictException (409) "cannot like own post"
+  │                                    │
+  │                                    │  PostLikeRepository.existsByPostIdAndUserId()
+  │                                    │  → ConflictException (409) "already liked"
+  │                                    │
+  │                                    │  PostLike { post, user }
+  │                                    │  PostLikeRepository.save(postLike)  ──▶ DB
   │                                    ▼
   │  ◀──────────────────────  204 No Content
+```
+
+### Unlike a post
+
+```
+Client
   │
   │  DELETE /api/posts/{id}/like
+  │  Authorization: Bearer <token>
   │  ──────────────────────────▶  PostController
   │                                    │
   │                                    ▼
-  │                               PostService
+  │                               PostService.unlikePost(postId, user)
   │                                    │
   │                                    │  PostLikeRepository.findByPostIdAndUserId()
+  │                                    │  → ConflictException (409) "not liked" if absent
+  │                                    │
   │                                    │  PostLikeRepository.delete(postLike)  ──▶ DB
   │                                    ▼
   │  ◀──────────────────────  204 No Content
@@ -144,30 +271,96 @@ Client
 
 ---
 
-## Moderation Flow
+## 6. Moderation Flow
+
+### Get moderation queue
 
 ```
-Client (MODERATOR role only)
+Client (MODERATOR role)
   │
   │  GET /api/moderator
-  │  ────────────────────▶  ModeratorController
+  │  Authorization: Bearer <token>
+  │  ─────────────────────▶  SecurityConfig
+  │                               │  hasRole("MODERATOR")?
+  │                               │  → 403 Forbidden if not moderator
+  │                               ▼
+  │                          ModeratorController
   │                               │
   │                               ▼
-  │                          PostService
+  │                          PostService.getAllFlaggedPosts()
   │                               │
-  │                               │  PostRepository.findByFlaggedMisleadingTrue()
+  │                               │  PostRepository.findByAiFlaggedTrue()
+  │                               │  (ordered by updatedAt desc)
   │                               ▼
-  │  ◀──────────────────  List<PostResponse>  (flaggedMisleading = true)
+  │  ◀──────────────────  200  List<PostResponse>
+  │                            (includes aiScore + aiReasoning for each post)
+```
+
+### Confirm misleading (moderator action)
+
+```
+Client (MODERATOR role)
   │
   │  POST /api/posts/{id}/flag
-  │  ────────────────────────────▶  PostController
-  │                                      │
-  │                                      ▼
-  │                                 PostService
-  │                                      │
-  │                                      │  PostRepository.findById()
-  │                                      │  post.setFlaggedMisleading(true)
-  │                                      │  PostRepository.save(post)  ──▶ DB
-  │                                      ▼
-  │  ◀──────────────────────────  204 No Content
+  │  Authorization: Bearer <token>
+  │  ───────────────────────────▶  SecurityConfig
+  │                                     │  hasRole("MODERATOR")?
+  │                                     │  → 403 if not moderator
+  │                                     ▼
+  │                                PostController
+  │                                     │
+  │                                     ▼
+  │                                PostService.flagPost(postId)
+  │                                     │
+  │                                     │  PostRepository.findById(postId)
+  │                                     │  → PostNotFoundException (404) if missing
+  │                                     │
+  │                                     │  post.setFlaggedMisleading(true)
+  │                                     │  PostRepository.save(post)  ──▶ DB
+  │                                     ▼
+  │  ◀────────────────────────  204 No Content
+  │                             (post now shows 🚩 Misleading badge in feed)
 ```
+
+### Dismiss flag (moderator action)
+
+```
+Client (MODERATOR role)
+  │
+  │  DELETE /api/posts/{id}/flag
+  │  Authorization: Bearer <token>
+  │  ───────────────────────────▶  SecurityConfig
+  │                                     │  hasRole("MODERATOR")?
+  │                                     │  → 403 if not moderator
+  │                                     ▼
+  │                                PostController
+  │                                     │
+  │                                     ▼
+  │                                PostService.unflagPost(postId)
+  │                                     │
+  │                                     │  PostRepository.findById(postId)
+  │                                     │  → PostNotFoundException (404) if missing
+  │                                     │
+  │                                     │  post.setAiFlagged(false)
+  │                                     │  post.setFlaggedMisleading(false)
+  │                                     │  PostRepository.save(post)  ──▶ DB
+  │                                     ▼
+  │  ◀────────────────────────  204 No Content
+  │                             (post removed from moderation queue entirely)
+```
+
+---
+
+## 7. Exception Handling Summary
+
+All errors are handled globally by `GlobalExceptionHandler`:
+
+| Exception | HTTP | Example message |
+|---|---|---|
+| `MethodArgumentNotValidException` | 400 | `Username must be between 3 and 20 characters.` |
+| `BadCredentialsException` | 401 | `Bad credentials` |
+| `UserNotFoundException` | 404 | `User not found: alice` |
+| `PostNotFoundException` | 404 | `Post not found: b100...` |
+| `UsernameAlreadyExistsException` | 409 | `Username 'alice' is already taken` |
+| `ConflictException` | 409 | `You have already liked this post` |
+| `Exception` (generic) | 500 | `An unexpected error occurred: ...` |
