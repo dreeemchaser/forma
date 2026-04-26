@@ -1,0 +1,8 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" rx="14" fill="#27187E"/>
+  <!-- Corner bracket F mark -->
+  <rect x="14" y="13" width="8"  height="38" rx="3" fill="#ffffff"/>
+  <rect x="14" y="13" width="34" height="8"  rx="3" fill="#ffffff"/>
+  <rect x="14" y="29" width="24" height="6"  rx="3" fill="#758BFD"/>
+  <rect x="14" y="43" width="14" height="6"  rx="3" fill="#7A9A35"/>
+</svg>
