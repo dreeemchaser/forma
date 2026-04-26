@@ -71,7 +71,7 @@ Wait for the backend to log `Started ApiApplication` before using the app.
 In a separate terminal, once the database container is healthy:
 
 ```bash
-docker compose exec postgres psql -U forma -d forma -f /dev/stdin < api/seed.sql
+docker compose exec -T postgres psql -U forma -d forma < api/seed.sql
 ```
 
 This creates 5 users, 7 posts (2 AI-flagged), likes, and comments.
