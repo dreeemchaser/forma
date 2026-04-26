@@ -28,8 +28,8 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
       <div className="rounded-2xl shadow-lg p-8 w-full max-w-md" style={{ background: 'var(--card)', boxShadow: 'var(--shadow)' }}>
-        <div className="mb-6">
-          <img src="/logo.svg" alt="Forma" style={{ height: '36px', width: 'auto', marginBottom: '4px' }} />
+        <div className="mb-6 text-center">
+          <img src="/logo.svg" alt="Forma" style={{ height: '36px', width: 'auto', marginBottom: '4px' }} className="mx-auto" />
           <h1 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-heading)' }}>Welcome back</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Sign in to your Forma account</p>
         </div>

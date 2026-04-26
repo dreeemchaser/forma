@@ -6,13 +6,17 @@ import { useAuth } from '../context/AuthContext'
 export default function RegisterPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ username: '', password: '' })
+  const [form, setForm] = useState({ username: '', password: '', confirmPassword: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
     setLoading(true)
     try {
       const res = await registerApi(form.username, form.password)
@@ -28,8 +32,8 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
       <div className="rounded-2xl p-8 w-full max-w-md" style={{ background: 'var(--card)', boxShadow: 'var(--shadow)' }}>
-        <div className="mb-6">
-          <img src="/logo.svg" alt="Forma" style={{ height: '36px', width: 'auto', marginBottom: '4px' }} />
+        <div className="mb-6 text-center">
+          <img src="/logo.svg" alt="Forma" style={{ height: '36px', width: 'auto', marginBottom: '4px' }} className="mx-auto" />
           <h1 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-heading)' }}>Create an account</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Join Forma today</p>
         </div>
@@ -68,6 +72,22 @@ export default function RegisterPage() {
               onFocus={e => e.target.style.boxShadow = '0 0 0 2px var(--accent)'}
               onBlur={e => e.target.style.boxShadow = 'none'}
               placeholder="8–16 characters"
+              minLength={8}
+              maxLength={16}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>Confirm Password</label>
+            <input
+              type="password"
+              value={form.confirmPassword}
+              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+              className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+              style={{ border: '1px solid var(--border)', color: 'var(--text-heading)', background: 'var(--white)' }}
+              onFocus={e => e.target.style.boxShadow = '0 0 0 2px var(--accent)'}
+              onBlur={e => e.target.style.boxShadow = 'none'}
+              placeholder="••••••••"
               minLength={8}
               maxLength={16}
               required
